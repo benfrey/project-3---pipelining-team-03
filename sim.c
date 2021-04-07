@@ -115,7 +115,7 @@ void printstate(statetype* stateptr){
     printf("\tpc %d\n", stateptr->pc);
 
     printf("\tdata memory:\n");
-	for (i=0; i<stateptr->nummemory; i++) {
+	for (i=0; i<stateptr->numMemory; i++) {
 	    printf("\t\tdatamem[ %d ] %d\n", i, stateptr->datamem[i]);
 	}
     printf("\tregisters:\n");
@@ -124,28 +124,28 @@ void printstate(statetype* stateptr){
 	}
     printf("\tIFID:\n");
 	printf("\t\tinstruction ");
-	printinstruction(stateptr->IFID.instr);
+	printInstruction(stateptr->IFID.instr);
 	printf("\t\tpcplus1 %d\n", stateptr->IFID.pcplus1);
     printf("\tIDEX:\n");
 	printf("\t\tinstruction ");
-	printinstruction(stateptr->IDEX.instr);
+	printInstruction(stateptr->IDEX.instr);
 	printf("\t\tpcplus1 %d\n", stateptr->IDEX.pcplus1);
 	printf("\t\treadregA %d\n", stateptr->IDEX.readregA);
 	printf("\t\treadregB %d\n", stateptr->IDEX.readregB);
 	printf("\t\toffset %d\n", stateptr->IDEX.offset);
     printf("\tEXMEM:\n");
 	printf("\t\tinstruction ");
-	printinstruction(stateptr->EXMEM.instr);
+	printInstruction(stateptr->EXMEM.instr);
 	printf("\t\tbranchtarget %d\n", stateptr->EXMEM.branchtarget);
 	printf("\t\taluresult %d\n", stateptr->EXMEM.aluresult);
 	printf("\t\treadreg %d\n", stateptr->EXMEM.readreg);
     printf("\tMEMWB:\n");
 	printf("\t\tinstruction ");
-	printinstruction(stateptr->MEMWB.instr);
+	printInstruction(stateptr->MEMWB.instr);
 	printf("\t\twritedata %d\n", stateptr->MEMWB.writedata);
     printf("\tWBEND:\n");
 	printf("\t\tinstruction ");
-	printinstruction(stateptr->WBEND.instr);
+	printInstruction(stateptr->WBEND.instr);
 	printf("\t\twritedata %d\n", stateptr->WBEND.writedata);
 }
 
@@ -162,11 +162,41 @@ void print_stats(statetype* state){
 	printf("total of %d instructions fetched\n", state->fetched);
 	printf("total of %d instructions retired\n", state->retired);
 	printf("total of %d branches executed\n", state->branches);
-	printf("total of %d branch mispredictions\n", state->mispreds)
+	printf("total of %d branch mispredictions\n", state->mispreds);
 }
 
 void run(statetype* state, statetype* newstate){
 
+	// Initialize buffers
+	IFIDType* IFID = (IFIDType*)malloc(sizeof(IFIDType));
+	IFID->instr = NOOPINSTRUCTION;
+	IFID->pcplus1 = 0;
+	state->IFID = *IFID;
+
+	IDEXType* IDEX = (IDEXType*)malloc(sizeof(IDEXType));
+	IDEX->instr = NOOPINSTRUCTION;
+	IDEX->pcplus1 = 0;
+	IDEX->readregA = 0;
+	IDEX->readregB = 0;
+	IDEX->offset = 0;
+	state->IDEX = *IDEX;
+
+	EXMEMType* EXMEM = (EXMEMType*)malloc(sizeof(EXMEMType));
+	EXMEM->instr = NOOPINSTRUCTION;
+	EXMEM->branchtarget = 0;
+	EXMEM->aluresult = 0;
+	EXMEM->readreg = 0;
+	state->EXMEM = *EXMEM;
+
+	MEMWBType* MEMWB = (MEMWBType*)malloc(sizeof(MEMWBType));
+	MEMWB->instr = NOOPINSTRUCTION;
+	MEMWB->writedata = 0;
+	state->MEMWB = *MEMWB;
+
+	WBENDType* WBEND = (WBENDType*)malloc(sizeof(WBENDType));
+	WBEND->instr = NOOPINSTRUCTION;
+	WBEND->writedata = 0;
+	state->WBEND = *WBEND;
 
 	// Primary loop
 	while(1){
@@ -174,7 +204,7 @@ void run(statetype* state, statetype* newstate){
 
 		/* check for halt */
 		if(HALT == opcode(state->MEMWB.instr)) {
-			printf(“machine halted\n”);
+			printf("machine halted\n");
 			print_stats(state);
 			break;
 		}
@@ -183,20 +213,43 @@ void run(statetype* state, statetype* newstate){
 
 		/*------------------ IF stage ----------------- */
 
+		// Fetch new instructions
+		newstate->fetched++;
+
+		newstate->IFID.instr = state->instrmem[state->pc];
+		newstate->IDEX.pcplus1 = (state->pc)+1;
+
 		/*------------------ ID stage ----------------- */
+
+                newstate->IDEX.instr = state->IFID.instr;
+                newstate->IDEX.pcplus1 = 99;    // Not sure...
+                newstate->IDEX.readregA = field0(state->IFID.instr);
+                newstate->IDEX.readregB = field1(state->IFID.instr);
+                newstate->IDEX.offset = field2(state->IFID.instr);
 
 		/*------------------ EX stage ----------------- */
 
+		newstate->EXMEM.instr = state->IDEX.instr;
+		newstate->EXMEM.branchtarget = 99; // Not sure...
+		newstate->EXMEM.aluresult = 99; // Perform alu operation here...
+		newstate->EXMEM.readreg = 99; // Not sure...
+
 		/*------------------ MEM stage ----------------- */
+
+		newstate->MEMWB.instr = state->IDEX.instr;
+		newstate->MEMWB.writedata = 99; // Not sure...
 
 		/*------------------ WB stage ----------------- */
 
-		*state = *newstate; 	/* this is the last statement before the end of the loop.  
+		newstate->WBEND.instr = state->MEMWB.instr;
+		newstate->WBEND.writedata = 99; // Not sure...
+
+		*state = *newstate; 	/* this is the last statement before the end of the loop. 
 					It marks the end of the cycle and updates the current
 					state with the values calculated in this cycle
 					– AKA “Clock Tick”. */
 	}
-	
+
 }
 
 int main(int argc, char** argv){
@@ -252,12 +305,14 @@ int main(int argc, char** argv){
 	rewind(fp);
 
 	statetype* state = (statetype*)malloc(sizeof(statetype));
-
 	state->pc = 0;
-	memset(state->mem, 0, NUMMEMORY*sizeof(int));
+	memset(state->instrmem, 0, NUMMEMORY*sizeof(int));
+        memset(state->datamem, 0, NUMMEMORY*sizeof(int));
 	memset(state->reg, 0, NUMREGS*sizeof(int));
+        state->numMemory = line_count;
 
-	state->numMemory = line_count;
+	statetype* newstate = (statetype*)malloc(sizeof(statetype));
+
 
 	char line[256];
 
@@ -265,15 +320,16 @@ int main(int argc, char** argv){
 	while (fgets(line, sizeof(line), fp)) {
 		/* note that fgets doesn't strip the terminating \n, checking its
 		   presence would allow to handle lines longer that sizeof(line) */
-		state->mem[i] = atoi(line);
+		state->instrmem[i] = atoi(line);
 		i++;
 	}
 	fclose(fp);
 
 	/** Run the simulation **/
-	run(state);
+	run(state, newstate);
 
 	free(state);
+	free(newstate);
 	free(fname);
 
 }
