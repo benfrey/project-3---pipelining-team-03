@@ -208,39 +208,129 @@ void run(statetype* state, statetype* newstate){
 			print_stats(state);
 			break;
 		}
+
+		// Copy state into the mutable newstate and increment cycles.
 		*newstate = *state;
-		newstate->cycles++;
 
 		/*------------------ IF stage ----------------- */
 
-		// Fetch new instructions
+		// Fetch new instruction
 		newstate->fetched++;
-
 		newstate->IFID.instr = state->instrmem[state->pc];
-		newstate->IDEX.pcplus1 = (state->pc)+1;
+		newstate->IFID.pcplus1 = (state->pc)+1;
 
 		/*------------------ ID stage ----------------- */
 
+		// Decode fields from instr
+		int regA = field0(state->IFID.instr);
+		int regB = field1(state->IFID.instr);
+		int offset = signExtend(field2(state->IFID.instr));
+
+		// Determine destReg from MEMWB?
+		// Determine destReg data from WBEND?
+
                 newstate->IDEX.instr = state->IFID.instr;
-                newstate->IDEX.pcplus1 = 99;    // Not sure...
-                newstate->IDEX.readregA = field0(state->IFID.instr);
-                newstate->IDEX.readregB = field1(state->IFID.instr);
-                newstate->IDEX.offset = field2(state->IFID.instr);
+                newstate->IDEX.pcplus1 = newstate->IFID.pcplus1;
+                newstate->IDEX.readregA = newstate->reg[regA];
+                newstate->IDEX.readregB = newstate->reg[regB];
+                newstate->IDEX.offset = offset;
 
 		/*------------------ EX stage ----------------- */
 
-		newstate->EXMEM.instr = state->IDEX.instr;
-		newstate->EXMEM.branchtarget = 99; // Not sure...
-		newstate->EXMEM.aluresult = 99; // Perform alu operation here...
-		newstate->EXMEM.readreg = 99; // Not sure...
+		// Check for data errors
+
+
+		// ALU operation
+
+	        // Reused variables;
+        	int instr = newstate->EXEM.instr;
+	        int regA = newstate->IDEX.readregA;
+	        int regB = newstate->IDEX.readregB;
+        	int offset = newstate->IDEX.offset;
+	        int branchTarget = newstate->IDEX.pcplus1 + offset;
+	        int aluResult = 0;
+
+		// ADD
+                if(opcode(instr) == ADD){
+                        // Add
+                        aluResult = regA + regB;
+                        // Save result
+                        newstate->reg[field2(instr)] = aluResult;
+                }
+                // NAND
+                else if(opcode(instr) == NAND){
+                        // NAND
+                        aluResult = ~(regA & regB);
+                        // Save result
+                        newstate->reg[field2(instr)] = aluResult;
+                }
+                // LW or SW
+                else if(opcode(instr) == LW || opcode(instr) == SW){
+                        // Calculate memory address
+                        aluResult = regB + offset;
+                        if(opcode(instr) == LW){
+                                // Load
+                                newstate->reg[field0(instr)] = newstate->mem[aluResult];
+                        }else if(opcode(instr) == SW){
+                                // Store
+                                newstate->mem[aluResult] = regA;
+                        }
+                }
+                // JALR
+                else if(opcode(instr) == JALR){
+                	// Throw error?
+
+		        // rA != rB for JALR to work
+                        // Save pc+1 in regA
+                        //newstate->reg[field0(instr)] = newstate->pc;
+                        //Jump to the address in regB;
+                	//newstate->pc = newstate->reg[field1(instr)];
+                }
+                // BEQ
+                else if(opcode(instr) == BEQ){
+                        // Calculate condition
+                        aluResult = (regA - regB);
+
+                        // ZD
+                        if(aluResult==0){
+                                // branch
+                                newstate->pc = branchTarget;
+                        }
+                }
+                // NOOP
+                else if(opcode(instr) == NOOP){
+			// Do nothing...
+                }
+
+                // Advance buffers
+                newstate->EXMEM.instr = state->IDEX.instr;
+                newstate->EXMEM.branchtarget = branchTarget;
+		newstate->EXMEM.aluresult = aluresult;
+		newstate->EXMEM.readreg = newstate->reg[regA];
 
 		/*------------------ MEM stage ----------------- */
 
+		// Check for control errors
+		// 1. Assume branch not taken, otherwise will have to flush.
+
+                if(opcode(newstate->EXMEM.instr) == LW){
+                        // Load
+                        newstate->reg[field0(newstate->EXMEM.instr)] = newstate->datamem[newstate->EXMEM.aluresult];
+                }else if(opcode(newstate->EXMEM.instr) == SW){
+                        // Store
+                        newstate->datamem[newstate->EXMEM.aluResult] = newstate->EXMEM.readreg;
+                }
+
+		// Advance buffers
 		newstate->MEMWB.instr = state->IDEX.instr;
-		newstate->MEMWB.writedata = 99; // Not sure...
+		newstate->MEMWB.writedata = newstate->datamem[newstate->EXMEM.aluresult];
 
 		/*------------------ WB stage ----------------- */
 
+		// Determine what should be stored in write data depending on instr
+		//...
+
+		// Advance buffers
 		newstate->WBEND.instr = state->MEMWB.instr;
 		newstate->WBEND.writedata = 99; // Not sure...
 
@@ -248,6 +338,7 @@ void run(statetype* state, statetype* newstate){
 					It marks the end of the cycle and updates the current
 					state with the values calculated in this cycle
 					– AKA “Clock Tick”. */
+                newstate->cycles++;
 	}
 
 }
@@ -305,14 +396,13 @@ int main(int argc, char** argv){
 	rewind(fp);
 
 	statetype* state = (statetype*)malloc(sizeof(statetype));
+        statetype* newstate = (statetype*)malloc(sizeof(statetype));
+
 	state->pc = 0;
 	memset(state->instrmem, 0, NUMMEMORY*sizeof(int));
         memset(state->datamem, 0, NUMMEMORY*sizeof(int));
 	memset(state->reg, 0, NUMREGS*sizeof(int));
         state->numMemory = line_count;
-
-	statetype* newstate = (statetype*)malloc(sizeof(statetype));
-
 
 	char line[256];
 
