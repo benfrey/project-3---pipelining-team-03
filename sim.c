@@ -208,6 +208,7 @@ void run(statetype* state, statetype* newstate){
 			print_stats(state);
 			break;
 		}
+                // Throw error for jalr? After playing with provided ref_sim, just do nothing...
 
 		// Copy state into the mutable newstate and increment cycles.
 		*newstate = *state;
@@ -226,13 +227,28 @@ void run(statetype* state, statetype* newstate){
 		int regB = field1(state->IFID.instr);
 		int offset = signExtend(field2(state->IFID.instr));
 
-		// Determine destReg from MEMWB?
-		// Determine destReg data from WBEND?
+		// Determine destReg from MEMWB and pull data from WBEND
+		int destReg;
+
+                // R-Type
+                if(opcode(state->IFID.instr) == ADD || opcode(state->IFID.instr) == NAND){
+                        // Get destReg from field2
+                        destReg = field2(state->MEMWB.instr)
+                        // Result into reg
+                        newstate->reg[destReg] = state->WBEND.writeData;
+                }
+                // LW
+                else if(opcode(instr) == LW || opcode(instr) == SW){
+                        // Get destReg from field0
+                        destReg = field0(state->MEMWB.instr)
+                        // Result into reg
+                        newstate->reg[destReg] = state->WBEND.writeData;
+                }
 
                 newstate->IDEX.instr = state->IFID.instr;
-                newstate->IDEX.pcplus1 = newstate->IFID.pcplus1;
-                newstate->IDEX.readregA = newstate->reg[regA];
-                newstate->IDEX.readregB = newstate->reg[regB];
+                newstate->IDEX.pcplus1 = state->IFID.pcplus1;
+                newstate->IDEX.readregA = state->reg[regA];
+                newstate->IDEX.readregB = state->reg[regB];
                 newstate->IDEX.offset = offset;
 
 		/*------------------ EX stage ----------------- */
@@ -243,11 +259,11 @@ void run(statetype* state, statetype* newstate){
 		// ALU operation
 
 	        // Reused variables;
-        	int instr = newstate->EXEM.instr;
+        	int instr = newstate->IDEX.instr;
 	        int regA = newstate->IDEX.readregA;
 	        int regB = newstate->IDEX.readregB;
         	int offset = newstate->IDEX.offset;
-	        int branchTarget = newstate->IDEX.pcplus1 + offset;
+	        int branchTarget = newstate->pc+1; // Assume branch not taken, go to next line.
 	        int aluResult = 0;
 
 		// ADD
@@ -276,25 +292,18 @@ void run(statetype* state, statetype* newstate){
                                 newstate->mem[aluResult] = regA;
                         }
                 }
-                // JALR
-                else if(opcode(instr) == JALR){
-                	// Throw error?
-
-		        // rA != rB for JALR to work
-                        // Save pc+1 in regA
-                        //newstate->reg[field0(instr)] = newstate->pc;
-                        //Jump to the address in regB;
-                	//newstate->pc = newstate->reg[field1(instr)];
-                }
                 // BEQ
                 else if(opcode(instr) == BEQ){
                         // Calculate condition
                         aluResult = (regA - regB);
 
+			// Increment branches executed;
+			newstate->branches++;
+
                         // ZD
                         if(aluResult==0){
-                                // branch
-                                newstate->pc = branchTarget;
+                                // Branch taken, will be caught as control error
+                                branchTarget = state->IDEX.pcplus1 + state->IDEX.offset;
                         }
                 }
                 // NOOP
@@ -313,32 +322,58 @@ void run(statetype* state, statetype* newstate){
 		// Check for control errors
 		// 1. Assume branch not taken, otherwise will have to flush.
 
-                if(opcode(newstate->EXMEM.instr) == LW){
+		// Determine writeData
+		int writeData = 0;
+
+		// R-Type
+                if(opcode(state->EXMEM.instr) == ADD || opcode(state->EXMEM.instr) == NAND){
+			writeData = state->EXMEM.aluresult;
+		}
+		// LW or SW
+                else if(opcode(state->EXMEM.instr) == LW){
                         // Load
-                        newstate->reg[field0(newstate->EXMEM.instr)] = newstate->datamem[newstate->EXMEM.aluresult];
-                }else if(opcode(newstate->EXMEM.instr) == SW){
+                        writeData = state->datamem[state->EXMEM.aluresult];
+                }else if(opcode(state->EXMEM.instr) == SW){
                         // Store
-                        newstate->datamem[newstate->EXMEM.aluResult] = newstate->EXMEM.readreg;
+                        newstate->datamem[state->EXMEM.aluResult] = state->EXMEM.readreg;
                 }
 
 		// Advance buffers
 		newstate->MEMWB.instr = state->IDEX.instr;
-		newstate->MEMWB.writedata = newstate->datamem[newstate->EXMEM.aluresult];
+		newstate->MEMWB.writedata = writeData;
 
 		/*------------------ WB stage ----------------- */
 
 		// Determine what should be stored in write data depending on instr
-		//...
+		int writeData = 0;
+
+		// R-Type
+                if(opcode(state->MEMWB.instr) == ADD || opcode(state->MEMWB.instr) == NAND){
+                        // Want to store basic ALU result
+                        writeData = state->MEMWB.writedata;
+                }
+                // LW
+                else if(opcode(state->MEMWB.instr) == LW){
+                        // Want to store result read from datamem
+                        writeData = state->MEMWB.writedata;
+                }
+		// SW or BEW
+		else if(opcode(state->MEMWB.instr) == SW || opcode(state->MEMWB.instr) == BEQ){
+			// Want to store ALU result
+			writeData = state->MEMWB.writedata;
+		}
 
 		// Advance buffers
 		newstate->WBEND.instr = state->MEMWB.instr;
-		newstate->WBEND.writedata = 99; // Not sure...
+		newstate->WBEND.writedata = writeData; // Not sure...
+
+                newstate->retired++;
+                newstate->cycles++;
 
 		*state = *newstate; 	/* this is the last statement before the end of the loop. 
 					It marks the end of the cycle and updates the current
 					state with the values calculated in this cycle
 					– AKA “Clock Tick”. */
-                newstate->cycles++;
 	}
 
 }
