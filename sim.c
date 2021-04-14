@@ -242,21 +242,20 @@ void run(statetype* state, statetype* newstate){
 		/*------------------ IF stage ----------------- */
 
                 // Determine PC
-		int pc;
+		//int pc;
 
-		if (opcode(state->EXMEM.instr) == BEQ && state->EXMEM.aluresult == 0){
-			pc = state->EXMEM.branchtarget;
-		}
-		else{
-			pc = state->IFID.pcplus1;
-		}
-
-		newstate->pc = pc;
+		//if (opcode(state->EXMEM.instr) == BEQ && state->EXMEM.aluresult == 0){
+		//	pc = state->EXMEM.branchtarget;
+		//}
+		//else{
+		//	pc = state->IFID.pcplus1;
+		//}
 
                 // Fetch new instruction and store PC+1 into buffer
-                newstate->fetched++;
+                newstate->fetched = state->fetched+1;
                 newstate->IFID.instr = state->instrmem[state->pc];
-		newstate->IFID.pcplus1 = pc+1;
+                newstate->pc = state->pc+1;
+		newstate->IFID.pcplus1 = state->pc+1;
 
 		/*------------------ ID stage ----------------- */
 
@@ -266,10 +265,11 @@ void run(statetype* state, statetype* newstate){
 		int imm = signExtend(field2(state->IFID.instr));
 
 		// Determine destReg from MEMWB and pull data from WBEND
-		int destReg;
+		//int destReg;
 
                 // R-Type
-                if(opcode(state->MEMWB.instr) == ADD || opcode(state->MEMWB.instr) == NAND){
+                /*
+		if(opcode(state->MEMWB.instr) == ADD || opcode(state->MEMWB.instr) == NAND){
                         // Get destReg from field2
                         destReg = field0(state->MEMWB.instr);
                         // Result into reg
@@ -282,6 +282,7 @@ void run(statetype* state, statetype* newstate){
                         // Result into reg
                         newstate->reg[destReg] = state->MEMWB.writedata;
                 }
+		*/
 
                 newstate->IDEX.instr = state->IFID.instr;
                 newstate->IDEX.pcplus1 = state->IFID.pcplus1;
@@ -349,6 +350,11 @@ void run(statetype* state, statetype* newstate){
 		// Determine writeData
 		int writeData = 0;
 
+		// Change pc if branch condition satisfied
+		if (opcode(state->EXMEM.instr) == BEQ && state->EXMEM.aluresult == 0){
+                        newstate->pc = state->EXMEM.branchtarget;
+                }
+
 		// R-Type
                 if(opcode(state->EXMEM.instr) == ADD || opcode(state->EXMEM.instr) == NAND){
 			writeData = state->EXMEM.aluresult;
@@ -371,16 +377,33 @@ void run(statetype* state, statetype* newstate){
 		// Determine what should be stored in write data depending on instr
 		writeData = 0;
 
-		if(opcode(state->MEMWB.instr) == ADD || opcode(state->MEMWB.instr) == NAND || opcode(state->MEMWB.instr) == LW){
-			writeData = state->MEMWB.writedata;
-		}
+                // Determine destReg from MEMWB and pull data from WBEND
+                int destReg;
+
+                // R-Type
+                if(opcode(state->MEMWB.instr) == ADD || opcode(state->MEMWB.instr) == NAND){
+                        // Get destReg from field2
+                        destReg = field0(state->MEMWB.instr);
+                        // Result into reg
+                        newstate->reg[destReg] = state->MEMWB.writedata;
+                }
+                // LW
+                else if(opcode(state->MEMWB.instr) == LW){
+                        // Get destReg from field0
+                        destReg = field0(state->MEMWB.instr);
+                        // Result into reg
+                        newstate->reg[destReg] = state->MEMWB.writedata;
+                }
+
+		//if(opcode(state->MEMWB.instr) == ADD || opcode(state->MEMWB.instr) == NAND || opcode(state->MEMWB.instr) == LW){
+		//	writeData = state->MEMWB.writedata;
+		//}
 
 		// Advance buffers
 		newstate->WBEND.instr = state->MEMWB.instr;
 		newstate->WBEND.writedata = writeData; // Not sure...
 
                 newstate->retired++;
-		newstate->pc++;
 
 		*state = *newstate; 	/* this is the last statement before the end of the loop. 
 					It marks the end of the cycle and updates the current
