@@ -121,32 +121,7 @@ void printInstruction(int instr){
 		printf("%s %d %d %d\n", opcodestring, field0(instr), field1(instr), signExtend(field2(instr)));
 	}
 }
-/*
-void printInstruction(int instr){
-	char opcodeString[10];
-	if (opcode(instr) == ADD) {
-		strcpy(opcodeString, "add");
-	} else if (opcode(instr) == NAND) {
-		strcpy(opcodeString, "nand");
-	} else if (opcode(instr) == LW) {
-		strcpy(opcodeString, "lw");
-	} else if (opcode(instr) == SW) {
-		strcpy(opcodeString, "sw");
-	} else if (opcode(instr) == BEQ) {
-		strcpy(opcodeString, "beq");
-	} else if (opcode(instr) == JALR) {
-		strcpy(opcodeString, "jalr");
-	} else if (opcode(instr) == HALT) {
-		strcpy(opcodeString, "halt");
-	} else if (opcode(instr) == NOOP) {
-		strcpy(opcodeString, "noop");
-	} else {
-		strcpy(opcodeString, "data");
-	}
 
-	printf("%s %d %d %d\n", opcodeString, field0(instr), field1(instr), signExtend(field2(instr)));
-}
-*/
 void printstate(statetype* stateptr){
     int i;
     printf("\n@@@\nstate before cycle %d starts\n", stateptr->cycles);
@@ -306,7 +281,6 @@ void run(statetype* state, statetype* newstate){
 	        int dataA = state->IDEX.readregA;
 	        int dataB = state->IDEX.readregB;
         	int offset = state->IDEX.offset;
-	        //int branchTarget = 0; // Assume branch not taken, go to next line.
 	        int aluResult = 0;
 
 		// ADD
@@ -380,7 +354,7 @@ void run(statetype* state, statetype* newstate){
 
                 // R-Type
                 if(opcode(state->MEMWB.instr) == ADD || opcode(state->MEMWB.instr) == NAND){
-                        // Get destReg from field2
+                        // Get destReg from field0
                         destReg = field0(state->MEMWB.instr);
                         // Update writeData
 			writeData = state->MEMWB.writedata;
@@ -401,7 +375,7 @@ void run(statetype* state, statetype* newstate){
 		newstate->WBEND.instr = state->MEMWB.instr;
 		newstate->WBEND.writedata = writeData; // Not sure...
 
-                newstate->retired++;
+                newstate->retired++; // This is misplaced
 
 		*state = *newstate; 	/* this is the last statement before the end of the loop. 
 					It marks the end of the cycle and updates the current
