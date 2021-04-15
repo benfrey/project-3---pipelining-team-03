@@ -83,6 +83,45 @@ int opcode(int instruction){
 	return(instruction>>22);
 }
 
+int signExtend(int num){
+        // convert a 16-bit number into a 32-bit integer
+        if (num & (1<<15) ) {
+                num -= (1<<16);
+        }
+        return num;
+}
+
+void printInstruction(int instr){
+	char opcodestring[10];
+	if (opcode(instr) == ADD) {
+		strcpy(opcodestring, "add");
+	} else if (opcode(instr) == NAND) {
+		strcpy(opcodestring, "nand");
+	} else if (opcode(instr) == LW) {
+		strcpy(opcodestring, "lw");
+	} else if (opcode(instr) == SW) {
+		strcpy(opcodestring, "sw");
+	} else if (opcode(instr) == BEQ) {
+		strcpy(opcodestring, "beq");
+	} else if (opcode(instr) == JALR) {
+		strcpy(opcodestring, "jalr");
+	} else if (opcode(instr) == HALT) {
+		strcpy(opcodestring, "halt");
+	} else if (opcode(instr) == NOOP) {
+		strcpy(opcodestring, "noop");
+	} else {
+		strcpy(opcodestring, "data");
+	}
+
+	if(opcode(instr) == ADD || opcode(instr) == NAND){
+		printf("%s %d %d %d\n", opcodestring, field2(instr), field0(instr), field1(instr));
+	} else if(0 == strcmp(opcodestring, "data")){
+		printf("%s %d\n", opcodestring, signExtend(field2(instr)));
+	} else{
+		printf("%s %d %d %d\n", opcodestring, field0(instr), field1(instr), signExtend(field2(instr)));
+	}
+}
+/*
 void printInstruction(int instr){
 	char opcodeString[10];
 	if (opcode(instr) == ADD) {
@@ -105,10 +144,9 @@ void printInstruction(int instr){
 		strcpy(opcodeString, "data");
 	}
 
-	printf("%s %d %d %d\n", opcodeString, field0(instr), field1(instr),
-			field2(instr));
+	printf("%s %d %d %d\n", opcodeString, field0(instr), field1(instr), signExtend(field2(instr)));
 }
-
+*/
 void printstate(statetype* stateptr){
     int i;
     printf("\n@@@\nstate before cycle %d starts\n", stateptr->cycles);
@@ -149,14 +187,6 @@ void printstate(statetype* stateptr){
 	printf("\t\twritedata %d\n", stateptr->WBEND.writedata);
 }
 
-int signExtend(int num){
-	// convert a 16-bit number into a 32-bit integer
-	if (num & (1<<15) ) {
-		num -= (1<<16);
-	}
-	return num;
-}
-
 void print_stats(statetype* state){
 	printf("total of %d cycles executed\n", state->cycles);
 	printf("total of %d instructions fetched\n", state->fetched);
@@ -171,7 +201,9 @@ void checkDataHazard(statetype* state, statetype* newstate){
 
 void checkControlHazard(statetype* state, statetype* newstate){
 	// Branch occurred
-	if(state->EXMEM.branchtarget != newstate->pc){
+	if(state->EXMEM.branchtarget != state->pc+1){
+		printf("1-1-1-1-1-1 CONTROL ERROR 1-1-1-1-1-1");
+
 		// Need to modify currState to flush IFID, IDEX, EXMEM buffers
         	newstate->IFID.instr = NOOPINSTRUCTION;
         	newstate->IFID.pcplus1 = 0;
@@ -186,7 +218,7 @@ void checkControlHazard(statetype* state, statetype* newstate){
         	newstate->EXMEM.readreg = 0;
 
 		// Increment mispredictions
-		newstate->mispreds++;
+		newstate->mispreds = state->mispreds+1;
 	}
 }
 
@@ -241,19 +273,11 @@ void run(statetype* state, statetype* newstate){
 
 		/*------------------ IF stage ----------------- */
 
-                // Determine PC
-		//int pc;
-
-		//if (opcode(state->EXMEM.instr) == BEQ && state->EXMEM.aluresult == 0){
-		//	pc = state->EXMEM.branchtarget;
-		//}
-		//else{
-		//	pc = state->IFID.pcplus1;
-		//}
-
                 // Fetch new instruction and store PC+1 into buffer
                 newstate->fetched = state->fetched+1;
                 newstate->IFID.instr = state->instrmem[state->pc];
+
+		// Update PC
                 newstate->pc = state->pc+1;
 		newstate->IFID.pcplus1 = state->pc+1;
 
@@ -263,26 +287,6 @@ void run(statetype* state, statetype* newstate){
 		int regA = field0(state->IFID.instr);
 		int regB = field1(state->IFID.instr);
 		int imm = signExtend(field2(state->IFID.instr));
-
-		// Determine destReg from MEMWB and pull data from WBEND
-		//int destReg;
-
-                // R-Type
-                /*
-		if(opcode(state->MEMWB.instr) == ADD || opcode(state->MEMWB.instr) == NAND){
-                        // Get destReg from field2
-                        destReg = field0(state->MEMWB.instr);
-                        // Result into reg
-                        newstate->reg[destReg] = state->MEMWB.writedata;
-                }
-                // LW
-                else if(opcode(state->MEMWB.instr) == LW){
-                        // Get destReg from field0
-                        destReg = field0(state->MEMWB.instr);
-                        // Result into reg
-                        newstate->reg[destReg] = state->MEMWB.writedata;
-                }
-		*/
 
                 newstate->IDEX.instr = state->IFID.instr;
                 newstate->IDEX.pcplus1 = state->IFID.pcplus1;
@@ -319,13 +323,6 @@ void run(statetype* state, statetype* newstate){
                 else if(opcode(instr) == LW || opcode(instr) == SW){
                         // Calculate memory address
                         aluResult = dataB + offset;
-                        if(opcode(instr) == LW){
-                                // Load
-                                //newstate->reg[field0(instr)] = newstate->datamem[aluResult];
-                        }else if(opcode(instr) == SW){
-                                // Store
-                               // newstate->datamem[aluResult] = regA;
-                        }
                 }
                 // BEQ
                 else if(opcode(instr) == BEQ){
@@ -333,7 +330,7 @@ void run(statetype* state, statetype* newstate){
                         aluResult = (dataA - dataB);
 
 			// Increment branches executed;
-			newstate->branches++;
+			newstate->branches = state->branches+1;
                 }
 
                 // Advance buffers
@@ -344,16 +341,17 @@ void run(statetype* state, statetype* newstate){
 
 		/*------------------ MEM stage ----------------- */
 
-		// Check for control errors
-		//checkControlHazard(state, newstate);
-
-		// Determine writeData
-		int writeData = 0;
-
-		// Change pc if branch condition satisfied
+		// Change pc if branch condition satisfied, flush appropriate pipeline buffers
 		if (opcode(state->EXMEM.instr) == BEQ && state->EXMEM.aluresult == 0){
                         newstate->pc = state->EXMEM.branchtarget;
+
+                	// Check for control errors, is this valid location to call method to
+			// flush registers? Or does this violate some design guideline.
+                	checkControlHazard(state, newstate);
                 }
+
+                // Determine writeData
+                int writeData = 0;
 
 		// R-Type
                 if(opcode(state->EXMEM.instr) == ADD || opcode(state->EXMEM.instr) == NAND){
@@ -384,20 +382,20 @@ void run(statetype* state, statetype* newstate){
                 if(opcode(state->MEMWB.instr) == ADD || opcode(state->MEMWB.instr) == NAND){
                         // Get destReg from field2
                         destReg = field0(state->MEMWB.instr);
-                        // Result into reg
+                        // Update writeData
+			writeData = state->MEMWB.writedata;
+			// Result into reg
                         newstate->reg[destReg] = state->MEMWB.writedata;
                 }
                 // LW
                 else if(opcode(state->MEMWB.instr) == LW){
                         // Get destReg from field0
                         destReg = field0(state->MEMWB.instr);
+                        // Update writeData
+                        writeData = state->MEMWB.writedata;
                         // Result into reg
                         newstate->reg[destReg] = state->MEMWB.writedata;
                 }
-
-		//if(opcode(state->MEMWB.instr) == ADD || opcode(state->MEMWB.instr) == NAND || opcode(state->MEMWB.instr) == LW){
-		//	writeData = state->MEMWB.writedata;
-		//}
 
 		// Advance buffers
 		newstate->WBEND.instr = state->MEMWB.instr;
