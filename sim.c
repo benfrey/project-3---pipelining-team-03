@@ -171,7 +171,52 @@ void print_stats(statetype* state){
 }
 
 void checkDataHazard(statetype* state, statetype* newstate){
-	// Look down pileline...
+	// Look down pileline to see if destReg is present
+
+        // Decode fields from IFID buffer
+        int regA = field0(state->IFID.instr);
+        int regB = field1(state->IFID.instr);
+        int imm = signExtend(field2(state->IFID.instr));
+
+	// Don't need to look at WBEND, will have already been written back
+
+	// Look down pipeline to MEMWB buffer
+        if(opcode(state->MEMWB.instr) == ADD || opcode(state->MEMWB.instr) == NAND || opcode(state->MEMWB.instr) == LW){
+                // Check if regA will be revalued in WBEND
+                if(regA == field0(state->MEMWB.instr) || regB == field0(state->MEMWB.instr)){
+	                // Steal values and put into readRegA
+			newstate->IDEX.readregA = state->MEMWB.writedata;
+		}
+		// Check if regB will be revalued in WBEND
+                if(regB == field0(state->MEMWB.instr)){
+                        // Steal values and put into readRegB
+                        newstate->IDEX.readregB = state->MEMWB.writedata;
+                }
+                // Check if imm will be revalued in WBEND
+                //if(imm == field0(state->MEMWB.instr));
+                        // Steal values and put into readRegB
+                //        newstate->IDEX.readregB = state->MEMWB.writedata;
+                //}
+	}
+
+	// Look down pipepline to EXMEM buffer
+	if(opcode(state->EXMEM.instr) == ADD || opcode(state->EXMEM.instr) == NAND || opcode(state->EXMEM.instr) == LW){
+                // Check if regA will be revalued in EXMEM
+                if(regA == field0(state->EXMEM.instr) || regB == field0(state->EXMEM.instr)){
+                        // Steal values and put into readRegA
+                        newstate->IDEX.readregA = state->EXMEM.aluresult;
+                }
+                // Check if regB will be revalued in EXMEM
+                if(regB == field0(state->EXMEM.instr)){
+                        // Steal values and put into readRegB
+                        newstate->IDEX.readregB = state->EXMEM.aluresult;
+                }
+                // Check if imm will be revalued in EXMEM
+                //if(opcode(state->EXMEM.instr) == LW);
+                        // Steal calculated value and put into imm
+                //        newstate->IDEX.imm = state->MEMWB.writedata;
+                //}
+	}
 }
 
 void checkControlHazard(statetype* state, statetype* newstate){
@@ -272,7 +317,7 @@ void run(statetype* state, statetype* newstate){
 		/*------------------ EX stage ----------------- */
 
 		// Check for data errors
-
+		checkDataHazard(state, newstate);
 
 		// ALU operation
 
@@ -352,22 +397,13 @@ void run(statetype* state, statetype* newstate){
                 // Determine destReg from MEMWB and pull data from WBEND
                 int destReg;
 
-                // R-Type
-                if(opcode(state->MEMWB.instr) == ADD || opcode(state->MEMWB.instr) == NAND){
+                // R-Type, LW both require write back
+                if(opcode(state->MEMWB.instr) == ADD || opcode(state->MEMWB.instr) == NAND || opcode(state->MEMWB.instr) == LW){
                         // Get destReg from field0
                         destReg = field0(state->MEMWB.instr);
                         // Update writeData
 			writeData = state->MEMWB.writedata;
 			// Result into reg
-                        newstate->reg[destReg] = state->MEMWB.writedata;
-                }
-                // LW
-                else if(opcode(state->MEMWB.instr) == LW){
-                        // Get destReg from field0
-                        destReg = field0(state->MEMWB.instr);
-                        // Update writeData
-                        writeData = state->MEMWB.writedata;
-                        // Result into reg
                         newstate->reg[destReg] = state->MEMWB.writedata;
                 }
 
