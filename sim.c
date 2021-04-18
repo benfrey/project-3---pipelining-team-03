@@ -170,53 +170,69 @@ void print_stats(statetype* state){
 	printf("total of %d branch mispredictions\n", state->mispreds);
 }
 
-void checkDataHazard(statetype* state, statetype* newstate){
+int checkDataHazard(statetype* state, statetype* newstate){
 	// Look down pileline to see if destReg is present
 
         // Decode fields from IFID buffer
-        int regA = field0(state->IFID.instr);
-        int regB = field1(state->IFID.instr);
-        int imm = signExtend(field2(state->IFID.instr));
+        int regA = field1(state->IDEX.instr);
+        int regB = field2(state->IDEX.instr);
+        //int imm = signExtend(field2(state->IDEX.instr));
 
 	// Don't need to look at WBEND, will have already been written back
 
-	// Look down pipeline to MEMWB buffer
-        if(opcode(state->MEMWB.instr) == ADD || opcode(state->MEMWB.instr) == NAND || opcode(state->MEMWB.instr) == LW){
-                // Check if regA will be revalued in WBEND
-                if(regA == field0(state->MEMWB.instr) || regB == field0(state->MEMWB.instr)){
-	                // Steal values and put into readRegA
-			newstate->IDEX.readregA = state->MEMWB.writedata;
-		}
-		// Check if regB will be revalued in WBEND
-                if(regB == field0(state->MEMWB.instr)){
-                        // Steal values and put into readRegB
-                        newstate->IDEX.readregB = state->MEMWB.writedata;
-                }
-                // Check if imm will be revalued in WBEND
-                //if(imm == field0(state->MEMWB.instr));
-                        // Steal values and put into readRegB
-                //        newstate->IDEX.readregB = state->MEMWB.writedata;
-                //}
-	}
+	// Bypassing/Forwarding
+/*
+        // Look down pipepline to EXMEM buffer
+        if(opcode(state->EXMEM.instr) == ADD || opcode(state->EXMEM.instr) == NAND || opcode(state->EXMEM.instr) == LW){
+                // Check if regA or regB will be revalued in EXMEM
+                if(regA == field0(state->EXMEM.instr) || regB == field0(state->EXMEM.instr)){
+                        // Push EXMEM and later buffers forward and insert noop (BUBBLE)
+                        newstate->pc = state->pc;
+                        newstate->IFID.instr = state->IFID.instr;
+                        newstate->IFID.pcplus1 = state->IFID.pcplus1;
+                        newstate->IDEX.instr = state->IDEX.instr;
+                        newstate->IDEX.pcplus1 = state->IDEX.pcplus1;
+                        newstate->IDEX.readregA = state->IDEX.readregA;
+                        newstate->IDEX.readregB = state->IDEX.readregB;
+                        newstate->IDEX.offset = state->IDEX.offset;
+                        newstate->EXMEM.instr = NOOPINSTRUCTION;
+                        newstate->EXMEM.branchtarget = 0;
+                        newstate->EXMEM.aluresult = 0;
+                        newstate->EXMEM.readreg = 0;
+
+                        // Correct fetched
+                        newstate->fetched = state->fetched;
+                 }
+        }
+*/
+	// Load stall
 
 	// Look down pipepline to EXMEM buffer
-	if(opcode(state->EXMEM.instr) == ADD || opcode(state->EXMEM.instr) == NAND || opcode(state->EXMEM.instr) == LW){
+	if(opcode(state->IDEX.instr) == LW && (opcode(state->EXMEM.instr) == ADD || opcode(state->EXMEM.instr) == NAND || opcode(state->EXMEM.instr) == LW)){
                 // Check if regA will be revalued in EXMEM
-                if(regA == field0(state->EXMEM.instr) || regB == field0(state->EXMEM.instr)){
-                        // Steal values and put into readRegA
-                        newstate->IDEX.readregA = state->EXMEM.aluresult;
-                }
-                // Check if regB will be revalued in EXMEM
-                if(regB == field0(state->EXMEM.instr)){
-                        // Steal values and put into readRegB
-                        newstate->IDEX.readregB = state->EXMEM.aluresult;
-                }
-                // Check if imm will be revalued in EXMEM
-                //if(opcode(state->EXMEM.instr) == LW);
-                        // Steal calculated value and put into imm
-                //        newstate->IDEX.imm = state->MEMWB.writedata;
-                //}
+                if(field1(state->IDEX.instr) == field0(state->EXMEM.instr)){
+                        // Push EXMEM and later buffers forward and insert noop (BUBBLE)
+                        newstate->pc = state->pc;
+                        newstate->IFID.instr = state->IFID.instr;
+                        newstate->IFID.pcplus1 = state->IFID.pcplus1;
+                        newstate->IDEX.instr = state->IDEX.instr;
+                        newstate->IDEX.pcplus1 = state->IDEX.pcplus1;
+                        newstate->IDEX.readregA = state->IDEX.readregA;
+                        newstate->IDEX.readregB = state->IDEX.readregB;
+                        newstate->IDEX.offset = state->IDEX.offset;
+                        newstate->EXMEM.instr = NOOPINSTRUCTION;
+                        newstate->EXMEM.branchtarget = 0;
+                        newstate->EXMEM.aluresult = 0;
+                        newstate->EXMEM.readreg = 0;
+
+			// Correct fetched
+			newstate->fetched = state->fetched;
+
+			return 1;
+		 }
 	}
+
+	return 0;
 }
 
 void checkControlHazard(statetype* state, statetype* newstate){
@@ -294,7 +310,7 @@ void run(statetype* state, statetype* newstate){
 		/*------------------ IF stage ----------------- */
 
                 // Fetch new instruction and store PC+1 into buffer
-                newstate->fetched = state->fetched+1;
+		newstate->fetched = state->fetched+1;
                 newstate->IFID.instr = state->instrmem[state->pc];
 
 		// Update PC
@@ -317,46 +333,52 @@ void run(statetype* state, statetype* newstate){
 		/*------------------ EX stage ----------------- */
 
 		// Check for data errors
-		checkDataHazard(state, newstate);
+		int check = checkDataHazard(state, newstate);
 
 		// ALU operation
 
-	        // Reused variables;
-        	int instr = state->IDEX.instr;
+	       	// Reused variables;
+	       	int instr = state->IDEX.instr;
 	        int dataA = state->IDEX.readregA;
 	        int dataB = state->IDEX.readregB;
-        	int offset = state->IDEX.offset;
+	        int offset = state->IDEX.offset;
 	        int aluResult = 0;
+
+                //printf("!!!%d %d %d %d\n", opcode(instr), dataA, dataB, offset);
+		//printf("%d", check);
+		//printf("%d", state->MEMWB.writedata);
 
 		// ADD
                 if(opcode(instr) == ADD){
-                        // ADD
-                        aluResult = dataA + dataB;
-                }
+               	        // ADD
+                       	aluResult = dataA + dataB;
+	        }
                 // NAND
                 else if(opcode(instr) == NAND){
-                        // NAND
-                        aluResult = ~(dataA & dataB);
-                }
-                // LW or SW
-                else if(opcode(instr) == LW || opcode(instr) == SW){
-                        // Calculate memory address
-                        aluResult = dataB + offset;
-                }
-                // BEQ
-                else if(opcode(instr) == BEQ){
-                        // Calculate condition
+        	        // NAND
+               	        aluResult = ~(dataA & dataB);
+	        }
+        	// LW or SW
+              	else if(opcode(instr) == LW || opcode(instr) == SW){
+                       	// Calculate memory address
+                       	aluResult = dataB + offset;
+		}
+       	        // BEQ
+               	else if(opcode(instr) == BEQ){
+                       	// Calculate condition
                         aluResult = (dataA - dataB);
 
 			// Increment branches executed;
 			newstate->branches = state->branches+1;
-                }
+	        }
 
-                // Advance buffers
-                newstate->EXMEM.instr = instr;
-                newstate->EXMEM.branchtarget = state->IDEX.pcplus1 + offset;
-		newstate->EXMEM.aluresult = aluResult;
-		newstate->EXMEM.readreg = dataA;
+        	// Advance buffers
+	       	if(check == 0){
+			newstate->EXMEM.instr = instr;
+		        newstate->EXMEM.branchtarget = state->IDEX.pcplus1 + offset;
+			newstate->EXMEM.aluresult = aluResult;
+			newstate->EXMEM.readreg = dataA;
+		}
 
 		/*------------------ MEM stage ----------------- */
 
@@ -397,21 +419,29 @@ void run(statetype* state, statetype* newstate){
                 // Determine destReg from MEMWB and pull data from WBEND
                 int destReg;
 
-                // R-Type, LW both require write back
-                if(opcode(state->MEMWB.instr) == ADD || opcode(state->MEMWB.instr) == NAND || opcode(state->MEMWB.instr) == LW){
-                        // Get destReg from field0
-                        destReg = field0(state->MEMWB.instr);
+                // R-Type
+                if(opcode(state->MEMWB.instr) == ADD || opcode(state->MEMWB.instr) == NAND){
+                        // Get destReg from field2
+                        destReg = field2(state->MEMWB.instr);
                         // Update writeData
 			writeData = state->MEMWB.writedata;
 			// Result into reg
-                        newstate->reg[destReg] = state->MEMWB.writedata;
+                        newstate->reg[destReg] = writeData;
+                } else if(opcode(state->MEMWB.instr) == LW){
+                        // Get destReg from field0
+                        destReg = field0(state->MEMWB.instr);
+                        // Update writeData
+                        writeData = state->MEMWB.writedata;
+                        // Result into reg
+                        newstate->reg[destReg] = writeData;
                 }
+
 
 		// Advance buffers
 		newstate->WBEND.instr = state->MEMWB.instr;
 		newstate->WBEND.writedata = writeData; // Not sure...
 
-                newstate->retired++; // This is misplaced
+                newstate->retired = state->retired+1; // This is misplaced
 
 		*state = *newstate; 	/* this is the last statement before the end of the loop. 
 					It marks the end of the cycle and updates the current
