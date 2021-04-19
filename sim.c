@@ -238,9 +238,9 @@ int * checkDataHazard(statetype* state, statetype* newstate){
         }
 
 	// Load stall
-	if(opcode(state->IDEX.instr) == LW && (opcode(state->EXMEM.instr) == ADD || opcode(state->EXMEM.instr) == NAND || opcode(state->EXMEM.instr) == LW)){
+	if(opcode(state->EXMEM.instr) == LW){// && (opcode(state->IDEX.instr) == ADD || opcode(state->IDEX.instr) == NAND || opcode(state->IDEX.instr) == LW)){
                 // Check if regA will be revalued in EXMEM
-                if(field1(state->IDEX.instr) == field0(state->EXMEM.instr)){
+                if(field1(state->IDEX.instr) == field0(state->EXMEM.instr) || (useA == 1 && field0(state->IDEX.instr) == field0(state->EXMEM.instr))){
                         // Push EXMEM and later buffers forward and insert noop (BUBBLE)
                         newstate->pc = state->pc;
                         newstate->IFID.instr = state->IFID.instr;
