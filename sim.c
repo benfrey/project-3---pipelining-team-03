@@ -185,8 +185,6 @@ int * checkDataHazard(statetype* state, statetype* newstate){
 	if(opcode(state->IDEX.instr) == ADD || opcode(state->IDEX.instr) == NAND || opcode(state->IDEX.instr) == BEQ){useA = 1;}
         //int imm = signExtend(field2(state->IDEX.instr));
 
-	// Don't need to look at WBEND, will have already been written back
-
 	// Bypassing/Forwarding
 	if(opcode(state->WBEND.instr) == ADD || opcode(state->WBEND.instr) == NAND){
 		if(useA == 1 && regA == field2(state->WBEND.instr)){
@@ -238,34 +236,8 @@ int * checkDataHazard(statetype* state, statetype* newstate){
                         output[2]= output[2] | 1;
                 }
         }
-	printf("HAZARD: %d %d %d",output[0],output[1],output[2]);
-/*
-        // Look down pipepline to EXMEM buffer
-        if(opcode(state->EXMEM.instr) == ADD || opcode(state->EXMEM.instr) == NAND || opcode(state->EXMEM.instr) == LW){
-                // Check if regA or regB will be revalued in EXMEM
-                if(regA == field0(state->EXMEM.instr) || regB == field0(state->EXMEM.instr)){
-                        // Push EXMEM and later buffers forward and insert noop (BUBBLE)
-                        newstate->pc = state->pc;
-                        newstate->IFID.instr = state->IFID.instr;
-                        newstate->IFID.pcplus1 = state->IFID.pcplus1;
-                        newstate->IDEX.instr = state->IDEX.instr;
-                        newstate->IDEX.pcplus1 = state->IDEX.pcplus1;
-                        newstate->IDEX.readregA = state->IDEX.readregA;
-                        newstate->IDEX.readregB = state->IDEX.readregB;
-                        newstate->IDEX.offset = state->IDEX.offset;
-                        newstate->EXMEM.instr = NOOPINSTRUCTION;
-                        newstate->EXMEM.branchtarget = 0;
-                        newstate->EXMEM.aluresult = 0;
-                        newstate->EXMEM.readreg = 0;
 
-                        // Correct fetched
-                        newstate->fetched = state->fetched;
-                 }
-        }
-*/
 	// Load stall
-
-	// Look down pipepline to EXMEM buffer
 	if(opcode(state->IDEX.instr) == LW && (opcode(state->EXMEM.instr) == ADD || opcode(state->EXMEM.instr) == NAND || opcode(state->EXMEM.instr) == LW)){
                 // Check if regA will be revalued in EXMEM
                 if(field1(state->IDEX.instr) == field0(state->EXMEM.instr)){
@@ -285,18 +257,19 @@ int * checkDataHazard(statetype* state, statetype* newstate){
 
 			// Correct fetched
 			newstate->fetched = state->fetched;
-
+			newstate->retired = state->retired;
 			output[2]=4;
 		}
 	}
 
+        printf("DATA HAZARD: %d %d %d\n",output[0],output[1],output[2]);
 	return output;
 }
 
 void checkControlHazard(statetype* state, statetype* newstate){
 	// Branch occurred
 	if(state->EXMEM.branchtarget != state->pc+1){
-		printf("1-1-1-1-1-1 CONTROL ERROR 1-1-1-1-1-1");
+		printf("CONTROL HAZARD\n");
 
 		// Need to modify currState to flush IFID, IDEX, EXMEM buffers
         	newstate->IFID.instr = NOOPINSTRUCTION;
@@ -350,7 +323,7 @@ void run(statetype* state, statetype* newstate){
 	state->WBEND = *WBEND;
 
 	// Primary loop
-	while(state->cycles<100){
+	while(state->cycles<100){ // WILL NEED TO FIX BEFORE SUBMISSION
 		printstate(state);
 
 		/* check for halt */
@@ -369,6 +342,7 @@ void run(statetype* state, statetype* newstate){
 
                 // Fetch new instruction and store PC+1 into buffer
 		newstate->fetched = state->fetched+1;
+		newstate->retired = state->retired+1;
                 newstate->IFID.instr = state->instrmem[state->pc];
 
 		// Update PC
@@ -401,9 +375,14 @@ void run(statetype* state, statetype* newstate){
 	        int dataB = state->IDEX.readregB;
 	        int offset = state->IDEX.offset;
 	        int aluResult = 0;
-		printf("%d %d %d", check[0],check[1],check[2]);
-		if(check[2]==1 || check[2]==3){dataB=check[1];}
-		if(check[2]==2 || check[2]==3){dataA=check[0];}
+
+		printf("CHECKS: %d %d %d\n", check[0],check[1],check[2]);
+		if(check[2]==1 || check[2]==3){
+			dataB=check[1];
+		}
+		if(check[2]==2 || check[2]==3){
+			dataA=check[0];
+		}
 
                 //printf("!!!%d %d %d %d\n", opcode(instr), dataA, dataB, offset);
 		//printf("%d", check);
@@ -468,6 +447,13 @@ void run(statetype* state, statetype* newstate){
                         newstate->datamem[state->EXMEM.aluresult] = state->EXMEM.readreg;
                 }
 
+		// Correct cycles if we are going to HALT next cycle
+		if(opcode(state->EXMEM.instr) == HALT){
+			// Decrement retired
+			newstate->retired = state->retired-2;
+			newstate->fetched = state->fetched-2;
+		}
+
 		// Advance buffers
 		newstate->MEMWB.instr = state->EXMEM.instr;
 		newstate->MEMWB.writedata = writeData;
@@ -502,7 +488,7 @@ void run(statetype* state, statetype* newstate){
 		newstate->WBEND.instr = state->MEMWB.instr;
 		newstate->WBEND.writedata = writeData; // Not sure...
 
-                newstate->retired = state->retired+1; // This is misplaced
+                //newstate->retired = state->retired+1; // This is misplaced
 
 		*state = *newstate; 	/* this is the last statement before the end of the loop. 
 					It marks the end of the cycle and updates the current
