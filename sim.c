@@ -247,8 +247,10 @@ int * checkDataHazard(statetype* state, statetype* newstate){
                         newstate->IFID.pcplus1 = state->IFID.pcplus1;
                         newstate->IDEX.instr = state->IDEX.instr;
                         newstate->IDEX.pcplus1 = state->IDEX.pcplus1;
-                        newstate->IDEX.readregA = state->IDEX.readregA;
-                        newstate->IDEX.readregB = state->IDEX.readregB;
+                        if(output[2]==2 || output[2] == 3){newstate->IDEX.readregA = output[0];}
+			else{newstate->IDEX.readregA = state->IDEX.readregA;}
+                        if(output[2]==1 || output[2] == 3){newstate->IDEX.readregB = output[1];}
+			else{newstate->IDEX.readregB = state->IDEX.readregB;}
                         newstate->IDEX.offset = state->IDEX.offset;
                         newstate->EXMEM.instr = NOOPINSTRUCTION;
                         newstate->EXMEM.branchtarget = 0;
@@ -268,6 +270,9 @@ int * checkDataHazard(statetype* state, statetype* newstate){
 
 void checkControlHazard(statetype* state, statetype* newstate){
 	// Branch occurred
+
+       	// Increment branches executed;
+        //newstate->branches = state->branches+1;
 	if(state->EXMEM.branchtarget != state->pc+1){
 		//printf("CONTROL HAZARD\n");
 
@@ -286,6 +291,8 @@ void checkControlHazard(statetype* state, statetype* newstate){
 
 		// Increment mispredictions
 		newstate->mispreds = state->mispreds+1;
+		newstate->fetched = state->fetched-1;
+		newstate->retired = state->retired-2;
 	}
 }
 
@@ -406,10 +413,8 @@ void run(statetype* state, statetype* newstate){
        	        // BEQ
                	else if(opcode(instr) == BEQ){
                        	// Calculate condition
-                        aluResult = (dataA - dataB);
+			aluResult = (dataA - dataB);
 
-			// Increment branches executed;
-			newstate->branches = state->branches+1;
 	        }
 
         	// Advance buffers
@@ -419,13 +424,15 @@ void run(statetype* state, statetype* newstate){
 			newstate->EXMEM.aluresult = aluResult;
 			newstate->EXMEM.readreg = dataA;
 		}
+		else{newstate->branches = state->branches;}
 
 		/*------------------ MEM stage ----------------- */
-
+		if (opcode(state->EXMEM.instr) == BEQ){
+                        newstate->branches = state->branches+1;
+		}
 		// Change pc if branch condition satisfied, flush appropriate pipeline buffers
 		if (opcode(state->EXMEM.instr) == BEQ && state->EXMEM.aluresult == 0){
                         newstate->pc = state->EXMEM.branchtarget;
-
                 	// Check for control errors, is this valid location to call method to
 			// flush registers? Or does this violate some design guideline.
                 	checkControlHazard(state, newstate);
@@ -451,7 +458,7 @@ void run(statetype* state, statetype* newstate){
 		if(opcode(state->EXMEM.instr) == HALT){
 			// Decrement retired
 			newstate->retired = state->retired-2;
-			newstate->fetched = state->fetched-2;
+			newstate->fetched = state->fetched-1;
 		}
 
 		// Advance buffers
