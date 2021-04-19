@@ -262,14 +262,14 @@ int * checkDataHazard(statetype* state, statetype* newstate){
 		}
 	}
 
-        printf("DATA HAZARD: %d %d %d\n",output[0],output[1],output[2]);
+        //printf("DATA HAZARD: %d %d %d\n",output[0],output[1],output[2]);
 	return output;
 }
 
 void checkControlHazard(statetype* state, statetype* newstate){
 	// Branch occurred
 	if(state->EXMEM.branchtarget != state->pc+1){
-		printf("CONTROL HAZARD\n");
+		//printf("CONTROL HAZARD\n");
 
 		// Need to modify currState to flush IFID, IDEX, EXMEM buffers
         	newstate->IFID.instr = NOOPINSTRUCTION;
@@ -376,7 +376,7 @@ void run(statetype* state, statetype* newstate){
 	        int offset = state->IDEX.offset;
 	        int aluResult = 0;
 
-		printf("CHECKS: %d %d %d\n", check[0],check[1],check[2]);
+		//printf("CHECKS: %d %d %d\n", check[0],check[1],check[2]);
 		if(check[2]==1 || check[2]==3){
 			dataB=check[1];
 		}
