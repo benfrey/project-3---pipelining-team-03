@@ -258,7 +258,7 @@ int * checkDataHazard(statetype* state, statetype* newstate){
                         newstate->EXMEM.readreg = 0;
 
 			// Correct fetched
-			//newstate->fetched = state->fetched;
+			newstate->fetched = state->fetched;
 			newstate->retired = state->retired;
 			output[2]=4;
 		}
