@@ -258,7 +258,7 @@ int * checkDataHazard(statetype* state, statetype* newstate){
                         newstate->EXMEM.readreg = 0;
 
 			// Correct fetched
-			newstate->fetched = state->fetched;
+			//newstate->fetched = state->fetched;
 			newstate->retired = state->retired;
 			output[2]=4;
 		}
@@ -273,7 +273,7 @@ void checkControlHazard(statetype* state, statetype* newstate){
 
        	// Increment branches executed;
         //newstate->branches = state->branches+1;
-	if(state->EXMEM.branchtarget != state->pc+1){
+	if(1){//state->EXMEM.branchtarget != state->pc+1){
 		//printf("CONTROL HAZARD\n");
 
 		// Need to modify currState to flush IFID, IDEX, EXMEM buffers
@@ -291,7 +291,7 @@ void checkControlHazard(statetype* state, statetype* newstate){
 
 		// Increment mispredictions
 		newstate->mispreds = state->mispreds+1;
-		newstate->fetched = state->fetched-1;
+		//newstate->fetched = state->fetched;
 		newstate->retired = state->retired-2;
 	}
 }
@@ -424,14 +424,16 @@ void run(statetype* state, statetype* newstate){
 			newstate->EXMEM.aluresult = aluResult;
 			newstate->EXMEM.readreg = dataA;
 		}
-		else{newstate->branches = state->branches;}
+		//else{newstate->branches = state->branches;}//////
 
 		/*------------------ MEM stage ----------------- */
 		if (opcode(state->EXMEM.instr) == BEQ){
                         newstate->branches = state->branches+1;
+			//newstate->fetched = state->fetched-1;
 		}
 		// Change pc if branch condition satisfied, flush appropriate pipeline buffers
 		if (opcode(state->EXMEM.instr) == BEQ && state->EXMEM.aluresult == 0){
+                       	//newstate->fetched = state->fetched - field2(state->EXMEM.instr) + 1;
                         newstate->pc = state->EXMEM.branchtarget;
                 	// Check for control errors, is this valid location to call method to
 			// flush registers? Or does this violate some design guideline.
@@ -458,7 +460,7 @@ void run(statetype* state, statetype* newstate){
 		if(opcode(state->EXMEM.instr) == HALT){
 			// Decrement retired
 			newstate->retired = state->retired-2;
-			newstate->fetched = state->fetched-1;
+			newstate->fetched = state->fetched-2;
 		}
 
 		// Advance buffers
