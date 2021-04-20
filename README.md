@@ -34,6 +34,7 @@ $ ./sim -i {inputfile.mc}<br />
 | classNoHazard.asm (classNoHazard.mc) | Similar to class.asm except has noop instructions between each instruction to prevent hazards. Minimum noop between each instruction was not calculated, as 4 will be sufficient for any hazard. |
 | lwStallTest.asm (lwStallTest.mc) | Tests data hazards associated with multiple load word instructions contiguously executed. Observable load stall (bubble) insertion. |
 | mult.asm (mult.mc) | Working example of fast multiplication using multiplication procedure outline on pg. 185 of Computer Organization and Design - Patterson and Hennessy. Presents multiple hazards that prove to be a robust test case for a pipelined CPU. |
+| multiDataTest.asm (multiDataTest.mc) | Robust test of nand, lw, and add instruction sequence that will result in a complex data hazard requiring forwarding across multiple buffers. |
 | sample1.asm (sample1.mc) | Sample program provided with project specifications. Used to check proper initialization of pipelined CPU simulator. |
 
 ## Known Issues
