@@ -12,8 +12,6 @@ The Rip Van saWinkle architecture implements a pipelined CPU design. A pipelined
 | Function |  Pull instruction from memory and update PC  |  Decode instruction word and read from register file | Carry out instruction | Load and store information from memory |  Write information back to register file  | Allows for easier data forwarding across buffers |
 
 ## UST-3400 Functional Overview
-!Replace with pipelined function!
-
 First the file input lines are swept to store the program into UST-3400 memory. The pipeline buffers: IF/ID, ID/EX, EX/MEM, MEM/WB, WB/END between each stage are initialized to contain noop instructions and parameter fields of 0.
 
 Second, the program is started at address 0 in memory. Depending on the program counter, an instruction is evaluated and the UST-3400 CPU orchestrates flight of instructions across the discrete stages. The program is run until a halt instruction is stored in the MEM/WB buffer.
