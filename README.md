@@ -39,4 +39,5 @@ $ ./sim -i {inputfile.mc}<br />
 | sample1.asm (sample1.mc) | Sample program provided with project specifications. Used to check proper initialization of pipelined CPU simulator. |
 
 ## Known Issues
-- "Fetched" instructions accounting anomaly with branches taken.
+- One test case in the autograder (Multihazard #3) in which the cycle count for our simulator was incorrect. We were unable to replicate this in any test case and currently consider it an unidentified corner case.
+
