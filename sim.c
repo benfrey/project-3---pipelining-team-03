@@ -372,7 +372,7 @@ void run(statetype* state, statetype* newstate){
 		// will eventually be retired (we correct assumption later)
 		newstate->fetched = state->fetched+1;
 		newstate->retired = state->retired+1;
-                newstate->IFID.instr = state->instrmem[state->pc];
+                newstate->IFID.instr = state->datamem[state->pc];
 
 		// Increment PC
                 newstate->pc = state->pc+1;
