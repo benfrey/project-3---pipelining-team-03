@@ -31,6 +31,7 @@ $ ./sim -i {inputfile.mc}<br />
 | ------------- | :---------------------|
 | addForwardTest.asm (addForwardTest.mc) | Presents a data hazard that requires proper implementation of a multi-buffer selection data forwarding. |
 | beqFetchTest.asm (beqFetchTest.mc) | Tests proper accounting of fetched instructions for multiple control hazards. |
+| beqHalt.asm (beqHalt.mc) | Tests scenario when BEQ is followed by a HALT, special considertations required when accounting for fetches. |
 | class.asm (class.mc) | Example of a while loop presented in class. Presents multiple data and control hazards. |
 | classNoHazard.asm (classNoHazard.mc) | Similar to class.asm except has noop instructions between each instruction to prevent hazards. Minimum noop between each instruction was not calculated, as 4 will be sufficient for any hazard. |
 | lwStallTest.asm (lwStallTest.mc) | Tests data hazards associated with multiple load word instructions contiguously executed. Observable load stall (bubble) insertion. |
