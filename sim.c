@@ -307,9 +307,15 @@ void checkControlHazard(statetype* state, statetype* newstate){
         newstate->retired = state->retired-2;
 
 	// Fix fetched
-	//if(signExtend(field2(state->EXMEM.instr)) < 0){
-	//	newstate->fetched = state->fetched+1;
-	//}
+        if(opcode(state->IFID.instr) == HALT){
+                newstate->fetched = state->fetched;
+        }
+        if(opcode(state->IDEX.instr) == HALT){
+                newstate->fetched = state->fetched-1;
+        }
+	if(opcode(state->EXMEM.instr) == HALT){
+		newstate->fetched = state->fetched-2;
+	}
 }
 
 void run(statetype* state, statetype* newstate){
@@ -474,7 +480,7 @@ void run(statetype* state, statetype* newstate){
 			newstate->fetched = state->fetched-2;
 		}
 
-		printf("FETCHED: %d", newstate->fetched);
+		//printf("FETCHED: %d", newstate->fetched);
 
 		// Advance buffers
 		newstate->MEMWB.instr = state->EXMEM.instr;
