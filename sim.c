@@ -304,8 +304,12 @@ void checkControlHazard(statetype* state, statetype* newstate){
 
 	// Increment mispredictions and decrease retired (they are flushed, can't retire)
 	newstate->mispreds = state->mispreds+1;
-	//newstate->fetched = state->fetched; // No change to fetched here...
-	newstate->retired = state->retired-2;
+        newstate->retired = state->retired-2;
+
+	// Fix fetched
+	//if(signExtend(field2(state->EXMEM.instr)) < 0){
+	//	newstate->fetched = state->fetched+1;
+	//}
 }
 
 void run(statetype* state, statetype* newstate){
@@ -439,6 +443,9 @@ void run(statetype* state, statetype* newstate){
 				// Correct pc to point to desired branch target
                         	newstate->pc = state->EXMEM.branchtarget;
 
+				//
+
+
 				// Check for control errors. Prof. Myre, is this valid location to call method to
                         	// flush registers? We thought HDU had to be at start of mem stage for control hazs.
                         	checkControlHazard(state, newstate);
@@ -466,6 +473,8 @@ void run(statetype* state, statetype* newstate){
 			newstate->retired = state->retired-2;
 			newstate->fetched = state->fetched-2;
 		}
+
+		printf("FETCHED: %d", newstate->fetched);
 
 		// Advance buffers
 		newstate->MEMWB.instr = state->EXMEM.instr;
