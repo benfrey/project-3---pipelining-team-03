@@ -188,7 +188,7 @@ int* checkDataHazard(statetype* state, statetype* newstate){
 			// If 1, may need to look at regA
 
 	// Instructions that may require looking at regA.
-	if(opcode(state->IDEX.instr) == ADD || opcode(state->IDEX.instr) == NAND || opcode(state->IDEX.instr) == BEQ){
+	if(opcode(state->IDEX.instr) == ADD || opcode(state->IDEX.instr) == NAND || opcode(state->IDEX.instr) == BEQ || opcode(state->IDEX.instr) == SW){
 		useA = 1;
 	}
 
