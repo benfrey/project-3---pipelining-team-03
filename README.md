@@ -12,8 +12,6 @@ This project relates to my CISC 480: Senior Capstone course because it was the m
 </br></br>
 NOTE: All code in this repository has been cleaned up since the completion of this course to be featured in my senior portfolio. Additional documentation has been provided under "/docs" for future usage.
 
-
-
 ## Project Description
 **Rip Van saWinkle (Third Generation UST-3400)**</br>
 The Rip Van saWinkle architecture implements a pipelined CPU design. A pipelined CPU implementation segments the data path into distinct stages that allows for multiple instructions to be in flight simultaneously. Staging of the data path has an immense comparative advantage to non-pipelined implementations in terms of performance at the cost of added complexity handled by our hazard detection systems outlined in the simulator documentation.
