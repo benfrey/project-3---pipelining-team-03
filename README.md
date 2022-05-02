@@ -4,7 +4,18 @@ Ben Frey and Joe Lambrecht <br />
 CISC340 - Professor Myre <br />
 Project 3 - Pipelined Implementation
 
-## Rip Van saWinkle (Third Generation UST-3400)
+## Project Overview
+Project Assignment Outline PDF: [project_assignment.pdf](/docs/project_assignment.pdf) </br>
+Simulator Documentation PDF: [simulator_documentation.pdf](/docs/simulator_documentation.pdf) </br>
+</br>
+This project relates to my CISC 480: Senior Capstone course because it was the most difficult assignment I worked on during my Computer Science curriculum at the University of St. Thomas. While my partner and I were successfully able to complete all project components, the Rip Van saWinkle Simulator had dozens of intricate design considerations that required implementation to pass all of the validation tests.
+</br></br>
+NOTE: All code in this repository has been cleaned up since the completion of this course to be featured in my senior portfolio. Additional documentation has been provided under "/docs" for future usage.
+
+
+
+## Project Description
+**Rip Van saWinkle (Third Generation UST-3400)**</br>
 The Rip Van saWinkle architecture implements a pipelined CPU design. A pipelined CPU implementation segments the data path into distinct stages that allows for multiple instructions to be in flight simultaneously. Staging of the data path has an immense comparative advantage to non-pipelined implementations in terms of performance at the cost of added complexity handled by our hazard detection systems outlined in the simulator documentation.
 
 | Stage | Instruction Fetch | Instruction Decode | Execute | Memory | Write-back | End |
@@ -12,7 +23,7 @@ The Rip Van saWinkle architecture implements a pipelined CPU design. A pipelined
 | Function |  Pull instruction from memory and update PC  |  Decode instruction word and read from register file | Carry out instruction | Load and store information from memory |  Write information back to register file  | Allows for easier data forwarding across buffers |
 
 ## UST-3400 Pipelined Datapath
-![UST-3400 Pipelined Datapath Diagram](https://github.com/UST-CISC340-Spring2021-01/project-3---pipelining-team-03/blob/main/datapath.png)
+![UST-3400 Pipelined Datapath Diagram](docs/datapath.png)
 
 ## UST-3400 Functional Overview
 First the file input lines are swept to store the program into UST-3400 memory. The pipeline buffers: IF/ID, ID/EX, EX/MEM, MEM/WB, WB/END between each stage are initialized to contain noop instructions and parameter fields of 0.
@@ -25,6 +36,8 @@ Once the program .zip has been decompressed, in the simulator directory simply r
 $ make<br />
 $ ./sim -i {inputfile.mc}<br />
 <br />
+Example program (running class.mc)</br>
+![Running class.mc](docs/class_example.png)
 
 ## Test Suite Descriptions
 | Assembly File (Machine Code)          | Description |
