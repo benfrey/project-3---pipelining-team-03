@@ -5,8 +5,8 @@ CISC340 - Professor Myre <br />
 Project 3 - Pipelined Implementation
 
 ## Project Overview
-Project Assignment Outline PDF: [project_assignment.pdf](/docs/project_assignment.pdf) </br>
-Simulator Documentation PDF: [simulator_documentation.pdf](/docs/simulator_documentation.pdf) </br>
+Project Assignment Outline PDF: [project_assignment.pdf](docs/project_assignment.pdf) </br>
+Simulator Documentation PDF: [simulator_documentation.pdf](docs/simulator_documentation.pdf) </br>
 </br>
 This project relates to my CISC 480: Senior Capstone course because it was the most difficult assignment I worked on during my Computer Science curriculum at the University of St. Thomas. While my partner and I were successfully able to complete all project components, the Rip Van saWinkle Simulator had dozens of intricate design considerations that required implementation to pass all of the validation tests.
 </br></br>
@@ -36,8 +36,11 @@ Once the program .zip has been decompressed, in the simulator directory simply r
 $ make<br />
 $ ./sim -i {inputfile.mc}<br />
 <br />
-Example program (running class.mc)</br>
-![Running class.mc](docs/class_example.png)
+To clean up the repository, run: </br>
+$ make clean </br>
+</br>
+Simulator execution of class.mc (see [class.log](docs/class.log) for full output)</br>
+![Simulator execution of class.mc](docs/class_example.png)
 
 ## Test Suite Descriptions
 | Assembly File (Machine Code)          | Description |
